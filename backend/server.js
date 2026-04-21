@@ -12,31 +12,101 @@ app.get("/", (req, res) => {
   res.send("TaskSwap backend is running 🚀");
 });
 
-// DATABASE (FIXED ATLAS CONNECTION)
-mongoose.connect(
-  "mongodb://Taskswap_db_user:Taskswap2026@ac-pok61qh-shard-00-00.0klp7bw.mongodb.net:27017,ac-pok61qh-shard-00-01.0klp7bw.mongodb.net:27017,ac-pok61qh-shard-00-02.0klp7bw.mongodb.net:27017/taskswap?ssl=true&replicaSet=atlas-sgd0l7-shard-0&authSource=admin&appName=Cluster0"
-)
-.then(() => console.log("MongoDB connected"))
-.catch((err) => console.log("MongoDB error:", err));
+// DATABASE
+mongoose.connect("mongodb+srv://Taskswap_db_user:Taskswap2026@cluster0.0klp7bw.mongodb.net/taskswap?retryWrites=true&w=majority")
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.log("MongoDB error:", err));
 
-// MODEL
+// MODELS
 const Task = mongoose.model("Task", {
   link: String,
   platform: String
 });
 
-// GET TASKS
-app.get("/tasks", async (req, res) => {
-  const tasks = await Task.find();
-  res.json(tasks);
+const User = mongoose.model("User", {
+  username: String,
+  credits: { type: Number, default: 50 }
 });
 
-// ADD TASK
-app.post("/tasks", async (req, res) => {
-  const task = new Task(req.body);
-  await task.save();
-  res.json(task);
+
+// ================= USERS =================
+
+// CREATE USER
+app.post("/user", async (req, res) => {
+  try {
+    const user = new User({ username: req.body.username });
+    await user.save();
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+// GET USER
+app.get("/user/:username", async (req, res) => {
+  const user = await User.findOne({ username: req.params.username });
+  res.json(user);
+});
+
+
+// ================= TASKS =================
+
+// GET TASKS
+app.get("/tasks", async (req, res) => {
+  try {
+    const tasks = await Task.find();
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CREATE TASK (WITH CREDIT CHECK)
+app.post("/tasks", async (req, res) => {
+  try {
+    const { link, platform, username } = req.body;
+
+    const user = await User.findOne({ username });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (user.credits < 10) {
+      return res.status(400).json({ error: "Not enough credits" });
+    }
+
+    user.credits -= 10;
+    await user.save();
+
+    const task = new Task({ link, platform });
+    await task.save();
+
+    res.json({ task, credits: user.credits });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// COMPLETE TASK (ADD CREDITS)
+app.post("/complete", async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    const user = await User.findOne({ username });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.credits += 5;
+    await user.save();
+
+    res.json({ credits: user.credits });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // START SERVER
 const PORT = process.env.PORT || 3000;
