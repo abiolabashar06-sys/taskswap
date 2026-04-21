@@ -1,20 +1,28 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// ================= DB =================
+/* ================= FRONTEND SERVING ================= */
+app.use(express.static(path.join(__dirname, "../frontend")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
+});
+
+/* ================= DATABASE ================= */
 mongoose.connect(
   "mongodb+srv://Taskswap_db_user:Taskswap2026@cluster0.0klp7bw.mongodb.net/taskswap?retryWrites=true&w=majority"
 )
 .then(() => console.log("MongoDB connected"))
 .catch(err => console.log("DB error:", err));
 
-// ================= MODELS =================
+/* ================= MODELS ================= */
 const User = mongoose.model("User", {
   username: String,
   password: String,
@@ -27,7 +35,7 @@ const Task = mongoose.model("Task", {
   username: String
 });
 
-// ================= AUTH =================
+/* ================= AUTH ================= */
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
 
@@ -54,7 +62,7 @@ app.get("/user/:username", async (req, res) => {
   res.json(user);
 });
 
-// ================= TASKS =================
+/* ================= TASKS ================= */
 app.get("/tasks", async (req, res) => {
   const tasks = await Task.find();
   res.json(tasks);
@@ -90,6 +98,6 @@ app.post("/complete", async (req, res) => {
   res.json(user);
 });
 
-// ================= START =================
+/* ================= START ================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running"));
+app.listen(PORT, () => console.log("Server running on", PORT));

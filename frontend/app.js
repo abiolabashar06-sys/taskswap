@@ -1,6 +1,6 @@
 const API = "https://taskswap-2dw6.onrender.com";
 
-const username = localStorage.getItem("user");
+let user = localStorage.getItem("user");
 
 /* ================= AUTH ================= */
 async function register() {
@@ -37,12 +37,12 @@ async function login() {
 
 /* ================= USER ================= */
 async function loadUser() {
-  if (!username) return;
+  if (!user) return;
 
-  const res = await fetch(API + "/user/" + username);
-  const user = await res.json();
+  const res = await fetch(API + "/user/" + user);
+  const data = await res.json();
 
-  document.getElementById("credits").innerText = user.credits;
+  document.getElementById("credits").innerText = data.credits;
 }
 
 /* ================= TASKS ================= */
@@ -71,7 +71,7 @@ async function createTask() {
     body: JSON.stringify({
       link: link.value,
       platform: platform.value,
-      username
+      username: user
     })
   });
 

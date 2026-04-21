@@ -4,17 +4,15 @@ body {
   background: #f4f6f8;
 }
 
-/* LOGIN */
 .card {
   width: 300px;
   margin: 100px auto;
   padding: 20px;
   background: white;
-  border-radius: 10px;
   text-align: center;
+  border-radius: 10px;
 }
 
-/* SIDEBAR */
 .sidebar {
   width: 200px;
   height: 100vh;
@@ -24,7 +22,6 @@ body {
   padding: 20px;
 }
 
-/* MAIN */
 .main {
   margin-left: 220px;
   padding: 20px;
