@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskSwap</title>
+</head>
+<body>
+
+<h1>TaskSwap</h1>
+<p>Earn credits by completing tasks</p>
+
+<h3>Credits: <span id="points">50</span></h3>
+
+<select id="platform">
+  <option>YouTube</option>
+  <option>Facebook</option>
+  <option>TikTok</option>
+  <option>Instagram</option>
+</select>
+
+<br><br>
+
+<input id="link" placeholder="Enter link">
+<button onclick="createTask()">Create Task (-10)</button>
+
+<h3>Tasks</h3>
+<div id="tasks"></div>
+
+<br>
+
+<input id="username" placeholder="Enter username">
+<button onclick="submitProof()">Submit Proof</button>
+
+<script>
+const API = "http://localhost:3000";
+
+let points = 50;
+
+// LOAD TASKS FROM BACKEND
+async function loadTasks() {
+  try {
+    const res = await fetch(API + "/tasks");
+    const data = await res.json();
+
+    const div = document.getElementById("tasks");
+    div.innerHTML = "";
+
+    data.forEach((task) => {
+      div.innerHTML += `
+        <p>
+          [${task.platform}] ${task.link}
+          <button onclick="startTask('${task.link}')">Start</button>
+        </p>
+      `;
+    });
+
+    document.getElementById("points").innerText = points;
+
+  } catch (err) {
+    console.error("Error loading tasks:", err);
+  }
+}
+
+// CREATE TASK (SEND TO BACKEND)
+async function createTask() {
+  const link = document.getElementById("link").value;
+  const platform = document.getElementById("platform").value;
+
+  if (!link) {
+    alert("Enter link");
+    return;
+  }
+
+  await fetch(API + "/tasks", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ link, platform })
+  });
+
+  document.getElementById("link").value = "";
+  loadTasks();
+}
+
+// OPEN TASK
+function startTask(link) {
+  window.open(link, "_blank");
+}
+
+// SUBMIT PROOF (FIXED)
+function submitProof() {
+  const username = document.getElementById("username").value;
+
+  if (!username) {
+    alert("Enter username");
+    return;
+  }
+
+  // simple reward (temporary logic)
+  points += 10;
+
+  alert("Proof submitted! +10 credits");
+
+  document.getElementById("points").innerText = points;
+  document.getElementById("username").value = "";
+}
+
+// INIT
+loadTasks();
+</script>
+
+</body>
+</html>
