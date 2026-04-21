@@ -4,111 +4,199 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TaskSwap</title>
+
+  <!-- ✅ CSS (NO INLINE STYLE WARNING) -->
+  <style>
+    #dashboard {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
 
 <h1>TaskSwap</h1>
-<p>Earn credits by completing tasks</p>
 
-<h3>Credits: <span id="points">50</span></h3>
+<!-- ================= AUTH ================= -->
+<div id="auth">
 
-<select id="platform">
-  <option>YouTube</option>
-  <option>Facebook</option>
-  <option>TikTok</option>
-  <option>Instagram</option>
-</select>
+  <h2>Login / Register</h2>
 
-<br><br>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
 
-<input id="link" placeholder="Enter link">
-<button onclick="createTask()">Create Task (-10)</button>
+  <button onclick="register()">Register</button>
+  <button onclick="login()">Login</button>
 
-<h3>Tasks</h3>
-<div id="tasks"></div>
+</div>
 
-<br>
+<!-- ================= DASHBOARD ================= -->
+<div id="dashboard">
 
-<input id="username" placeholder="Enter username">
-<button onclick="submitProof()">Submit Proof</button>
+  <h3>Credits: <span id="points">0</span></h3>
+
+  <button onclick="logout()">Logout</button>
+
+  <hr>
+
+  <input id="link" placeholder="Task link">
+
+  <select id="platform">
+    <option>YouTube</option>
+    <option>Facebook</option>
+    <option>TikTok</option>
+    <option>Instagram</option>
+  </select>
+
+  <button onclick="createTask()">Create Task (-10 credits)</button>
+
+  <hr>
+
+  <h3>Tasks</h3>
+  <div id="tasks"></div>
+
+</div>
 
 <script>
+
 const API = "https://taskswap-2dw6.onrender.com";
 
-let points = 50;
+let username = "";
+let loggedIn = false;
 
-// LOAD TASKS FROM BACKEND
-async function loadTasks() {
-  try {
-    const res = await fetch(API + "/tasks");
-    const data = await res.json();
-
-    const div = document.getElementById("tasks");
-    div.innerHTML = "";
-
-    data.forEach((task) => {
-      div.innerHTML += `
-        <p>
-          [${task.platform}] ${task.link}
-          <button onclick="startTask('${task.link}')">Start</button>
-        </p>
-      `;
-    });
-
-    document.getElementById("points").innerText = points;
-
-  } catch (err) {
-    console.error("Error loading tasks:", err);
-  }
+// ================= SHOW DASHBOARD =================
+function showDashboard() {
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
 }
 
-// CREATE TASK (SEND TO BACKEND)
+// ================= SHOW AUTH =================
+function showAuth() {
+  document.getElementById("auth").style.display = "block";
+  document.getElementById("dashboard").style.display = "none";
+}
+
+// ================= REGISTER =================
+async function register() {
+  const u = document.getElementById("username").value;
+  const p = document.getElementById("password").value;
+
+  const res = await fetch(API + "/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: u, password: p })
+  });
+
+  const data = await res.json();
+
+  if (data.error) return alert(data.error);
+
+  alert("Account created successfully!");
+}
+
+// ================= LOGIN =================
+async function login() {
+  const u = document.getElementById("username").value;
+  const p = document.getElementById("password").value;
+
+  const res = await fetch(API + "/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: u, password: p })
+  });
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  username = data.username;
+  loggedIn = true;
+
+  showDashboard();
+
+  loadUser();
+  loadTasks();
+
+  alert("Login successful");
+}
+
+// ================= LOGOUT =================
+function logout() {
+  username = "";
+  loggedIn = false;
+
+  showAuth();
+}
+
+// ================= LOAD USER =================
+async function loadUser() {
+  const res = await fetch(API + "/user/" + username);
+  const user = await res.json();
+
+  if (!user) return;
+
+  document.getElementById("points").innerText = user.credits;
+}
+
+// ================= LOAD TASKS =================
+async function loadTasks() {
+  const res = await fetch(API + "/tasks");
+  const data = await res.json();
+
+  const div = document.getElementById("tasks");
+  div.innerHTML = "";
+
+  data.forEach(task => {
+    div.innerHTML += `
+      <p>
+        [${task.platform}] ${task.link}
+        <button onclick="window.open('${task.link}', '_blank')">
+          Start
+        </button>
+      </p>
+    `;
+  });
+}
+
+// ================= CREATE TASK =================
 async function createTask() {
+  if (!loggedIn) {
+    alert("Login first");
+    return;
+  }
+
   const link = document.getElementById("link").value;
   const platform = document.getElementById("platform").value;
 
   if (!link) {
-    alert("Enter link");
+    alert("Enter task link");
     return;
   }
 
-  await fetch(API + "/tasks", {
+  const res = await fetch(API + "/tasks", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ link, platform })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ link, platform, username })
   });
 
-  document.getElementById("link").value = "";
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  loadUser();
   loadTasks();
 }
 
-// OPEN TASK
-function startTask(link) {
-  window.open(link, "_blank");
-}
-
-// SUBMIT PROOF (FIXED)
-function submitProof() {
-  const username = document.getElementById("username").value;
-
-  if (!username) {
-    alert("Enter username");
-    return;
-  }
-
-  // simple reward (temporary logic)
-  points += 10;
-
-  alert("Proof submitted! +10 credits");
-
-  document.getElementById("points").innerText = points;
-  document.getElementById("username").value = "";
-}
-
-// INIT
+// ================= INIT =================
+showAuth();
 loadTasks();
+
 </script>
 
 </body>

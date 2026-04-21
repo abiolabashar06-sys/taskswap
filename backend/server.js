@@ -1,114 +1,130 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
-// HOME ROUTE
-app.get("/", (req, res) => {
-  res.send("TaskSwap backend is running 🚀");
-});
+const SECRET = "taskswap_secret_key";
 
-// DATABASE
-mongoose.connect("mongodb+srv://Taskswap_db_user:Taskswap2026@cluster0.0klp7bw.mongodb.net/taskswap?retryWrites=true&w=majority")
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log("MongoDB error:", err));
+// ================= DB =================
+mongoose.connect(
+  "mongodb+srv://Taskswap_db_user:Taskswap2026@cluster0.0klp7bw.mongodb.net/taskswap?retryWrites=true&w=majority"
+)
+.then(() => console.log("MongoDB connected"))
+.catch(err => console.log("MongoDB error:", err));
 
-// MODELS
-const Task = mongoose.model("Task", {
-  link: String,
-  platform: String
-});
-
+// ================= MODELS =================
 const User = mongoose.model("User", {
-  username: String,
+  username: { type: String, unique: true },
+  password: String,
   credits: { type: Number, default: 50 }
 });
 
-
-// ================= USERS =================
-
-// CREATE USER
-app.post("/user", async (req, res) => {
-  try {
-    const user = new User({ username: req.body.username });
-    await user.save();
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+const Task = mongoose.model("Task", {
+  link: String,
+  platform: String,
+  createdBy: String,
+  completedBy: { type: [String], default: [] }
 });
 
-// GET USER
+// ================= AUTH =================
+app.post("/register", async (req, res) => {
+  const { username, password } = req.body;
+
+  const hashed = await bcrypt.hash(password, 10);
+
+  const user = await User.create({
+    username,
+    password: hashed
+  });
+
+  res.json(user);
+});
+
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+
+  const user = await User.findOne({ username });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) return res.status(400).json({ error: "Wrong password" });
+
+  const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "7d" });
+
+  res.json({ token, username });
+});
+
+// ================= USERS =================
+app.post("/user", async (req, res) => {
+  const { username } = req.body;
+
+  const user = await User.findOneAndUpdate(
+    { username },
+    { $setOnInsert: { username, credits: 50 } },
+    { upsert: true, new: true }
+  );
+
+  res.json(user);
+});
+
 app.get("/user/:username", async (req, res) => {
   const user = await User.findOne({ username: req.params.username });
   res.json(user);
 });
 
-
 // ================= TASKS =================
-
-// GET TASKS
 app.get("/tasks", async (req, res) => {
-  try {
-    const tasks = await Task.find();
-    res.json(tasks);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const tasks = await Task.find();
+  res.json(tasks);
 });
 
-// CREATE TASK (WITH CREDIT CHECK)
 app.post("/tasks", async (req, res) => {
-  try {
-    const { link, platform, username } = req.body;
+  const { link, platform, username } = req.body;
 
-    const user = await User.findOne({ username });
+  const user = await User.findOne({ username });
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return res.status(404).json({ error: "User not found" });
+  if (user.credits < 10) return res.status(400).json({ error: "Not enough credits" });
 
-    if (user.credits < 10) {
-      return res.status(400).json({ error: "Not enough credits" });
-    }
+  user.credits -= 10;
+  await user.save();
 
-    user.credits -= 10;
-    await user.save();
+  const task = await Task.create({
+    link,
+    platform,
+    createdBy: username
+  });
 
-    const task = new Task({ link, platform });
-    await task.save();
-
-    res.json({ task, credits: user.credits });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.json({ task, credits: user.credits });
 });
 
-
-// COMPLETE TASK (ADD CREDITS)
 app.post("/complete", async (req, res) => {
-  try {
-    const { username } = req.body;
+  const { username, taskId } = req.body;
 
-    const user = await User.findOne({ username });
+  const user = await User.findOne({ username });
+  const task = await Task.findById(taskId);
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user || !task)
+    return res.status(404).json({ error: "User or task not found" });
 
-    user.credits += 5;
-    await user.save();
+  if (task.completedBy.includes(username))
+    return res.status(400).json({ error: "Already completed" });
 
-    res.json({ credits: user.credits });
+  task.completedBy.push(username);
+  await task.save();
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  user.credits += 5;
+  await user.save();
+
+  res.json({ credits: user.credits });
 });
 
-
-// START SERVER
+// ================= START =================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
