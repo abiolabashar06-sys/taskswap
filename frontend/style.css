@@ -1,0 +1,43 @@
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #f4f6f8;
+}
+
+/* LOGIN */
+.card {
+  width: 300px;
+  margin: 100px auto;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 200px;
+  height: 100vh;
+  background: #111827;
+  color: white;
+  position: fixed;
+  padding: 20px;
+}
+
+/* MAIN */
+.main {
+  margin-left: 220px;
+  padding: 20px;
+}
+
+input, select {
+  display: block;
+  margin: 10px 0;
+  padding: 8px;
+  width: 100%;
+}
+
+button {
+  padding: 10px;
+  cursor: pointer;
+}

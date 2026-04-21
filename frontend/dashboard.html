@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>TaskSwap</h2>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="main">
+
+  <h2>Dashboard</h2>
+
+  <h3>Credits: <span id="credits">0</span></h3>
+
+  <input id="link" placeholder="Task link">
+
+  <select id="platform">
+    <option>YouTube</option>
+    <option>Facebook</option>
+    <option>TikTok</option>
+  </select>
+
+  <button onclick="createTask()">Create Task</button>
+
+  <div id="tasks"></div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
